@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expense Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1B2A29;
+    --paper:#E9E2D0;
+    --paper-card:#F5F0E3;
+    --rule:rgba(27,42,41,0.16);
+    --rule-strong:rgba(27,42,41,0.32);
+    --brass:#B8874A;
+    --brass-ink:#4A3316;
+    --rust:#A5402F;
+    --sage:#4B7361;
+    --muted:#6E6B5D;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Mono', monospace;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page{
+    max-width:520px;
+    margin:0 auto;
+    padding:28px 20px 80px;
+  }
+  .header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    border-bottom:2px solid var(--ink);
+    padding-bottom:14px;
+    margin-bottom:10px;
+  }
+  .header h1{
+    font-family:'Fraunces', serif;
+    font-style:italic;
+    font-weight:500;
+    font-size:26px;
+    margin:0;
+    letter-spacing:0.2px;
+  }
+  .header .sub{
+    font-size:11px;
+    color:var(--muted);
+    margin-top:2px;
+  }
+  .header .total{
+    text-align:right;
+  }
+  .header .total .amt{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:28px;
+    line-height:1;
+  }
+  .header .total .amt.negative{color:var(--rust);}
+  .header .total .lbl{
+    font-size:10px;
+    color:var(--muted);
+    margin-top:4px;
+  }
+  .stat-strip{
+    display:flex;
+    justify-content:center;
+    gap:22px;
+    font-size:11px;
+    color:var(--muted);
+    margin-bottom:22px;
+  }
+  .stat-strip span.income{color:var(--sage);}
+  .stat-strip span.expense{color:var(--rust);}
+  .stat-strip b{font-weight:600;}
+
+  .month-nav{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:16px;
+    margin-bottom:26px;
+  }
+  .month-nav button{
+    background:none;
+    border:1px solid var(--rule-strong);
+    color:var(--ink);
+    width:30px;height:30px;
+    cursor:pointer;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14px;
+  }
+  .month-nav button:hover{background:var(--paper-card);}
+  .month-nav .label{
+    font-size:13px;
+    min-width:130px;
+    text-align:center;
+  }
+
+  section{margin-bottom:30px;}
+  .section-title{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-family:'Fraunces', serif;
+    font-style:italic;
+    font-size:16px;
+    margin-bottom:14px;
+    color:var(--ink);
+  }
+  .section-title .mark{
+    width:7px;height:7px;
+    background:var(--brass);
+    display:inline-block;
+  }
+
+  .type-toggle{
+    display:flex;
+    border:1px solid var(--rule-strong);
+    margin-bottom:16px;
+  }
+  .type-toggle button{
+    flex:1;
+    border:none;
+    background:none;
+    padding:9px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--muted);
+    cursor:pointer;
+    border-right:1px solid var(--rule-strong);
+  }
+  .type-toggle button:last-child{border-right:none;}
+  .type-toggle button.active[data-type="expense"]{background:var(--ink);color:var(--paper-card);}
+  .type-toggle button.active[data-type="income"]{background:var(--sage);color:var(--paper-card);}
+
+  .form-card{
+    border:1px solid var(--rule-strong);
+    background:var(--paper-card);
+    padding:16px;
+  }
+  .amount-row{
+    display:flex;
+    align-items:center;
+    border-bottom:1px solid var(--rule);
+    padding-bottom:10px;
+    margin-bottom:14px;
+  }
+  .amount-row .baht{
+    font-size:20px;
+    color:var(--brass-ink);
+    margin-right:8px;
+  }
+  .amount-row input{
+    border:none;
+    background:none;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:22px;
+    color:var(--ink);
+    width:100%;
+    outline:none;
+  }
+  .chip-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .chip{
+    border:1px solid var(--rule-strong);
+    background:none;
+    color:var(--ink);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    padding:6px 10px;
+    cursor:pointer;
+  }
+  .chip.active{
+    background:var(--ink);
+    color:var(--paper-card);
+    border-color:var(--ink);
+  }
+  .chip.active.income-active{
+    background:var(--sage);
+    border-color:var(--sage);
+  }
+  .chip.add-chip{
+    color:var(--muted);
+    border-style:dashed;
+  }
+  .field-row{
+    display:flex;
+    gap:10px;
+    margin-bottom:14px;
+  }
+  .field-row input[type="text"], .field-row input[type="date"]{
+    flex:1;
+    border:none;
+    border-bottom:1px solid var(--rule-strong);
+    background:none;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    color:var(--ink);
+    padding:6px 2px;
+    outline:none;
+    min-width:0;
+  }
+  .label-mini{
+    font-size:10px;
+    color:var(--muted);
+    margin-bottom:6px;
+    text-transform:none;
+  }
+  .pay-chip-row{
+    display:flex;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .pay-chip{
+    flex:1;
+    border:1px solid var(--rule-strong);
+    background:none;
+    color:var(--ink);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    padding:7px 4px;
+    cursor:pointer;
+    text-align:center;
+  }
+  .pay-chip.active{
+    background:var(--brass);
+    color:var(--paper-card);
+    border-color:var(--brass);
+  }
+  .photo-row{
+    margin-bottom:14px;
+  }
+  .photo-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    border:1px dashed var(--rule-strong);
+    background:none;
+    color:var(--muted);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    padding:8px 12px;
+    cursor:pointer;
+  }
+  .photo-preview{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-top:8px;
+  }
+  .photo-preview img{
+    width:48px;height:48px;
+    object-fit:cover;
+    border:1px solid var(--rule-strong);
+  }
+  .photo-preview .remove{
+    font-size:11px;
+    color:var(--rust);
+    cursor:pointer;
+    text-decoration:underline;
+  }
+  .add-btn{
+    width:100%;
+    background:var(--ink);
+    color:var(--paper-card);
+    border:none;
+    padding:11px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    letter-spacing:0.3px;
+    cursor:pointer;
+  }
+  .add-btn.income-btn{background:var(--sage);}
+  .add-btn:hover{opacity:0.9;}
+  .add-btn:disabled{opacity:0.5;cursor:default;}
+
+  .new-cat-row{
+    display:flex;
+    gap:8px;
+    margin-bottom:14px;
+  }
+  .new-cat-row input{
+    flex:1;
+    border:1px solid var(--rule-strong);
+    background:#fff;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    padding:6px 8px;
+    outline:none;
+  }
+  .new-cat-row button{
+    border:1px solid var(--ink);
+    background:var(--ink);
+    color:var(--paper-card);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    padding:0 12px;
+    cursor:pointer;
+  }
+
+  .bar-row{
+    margin-bottom:12px;
+    cursor:pointer;
+  }
+  .bar-row .top{
+    display:flex;
+    justify-content:space-between;
+    font-size:12px;
+    margin-bottom:5px;
+  }
+  .bar-row .top .name{display:flex;align-items:center;gap:7px;}
+  .bar-row .top .dot{width:8px;height:8px;flex:none;}
+  .bar-row .top .figs{color:var(--muted);}
+  .bar-track{
+    height:7px;
+    background:rgba(27,42,41,0.08);
+    width:100%;
+  }
+  .bar-fill{height:100%;}
+  .bar-row.filtered .top .name{font-weight:600;}
+  .empty-note{
+    font-size:12px;
+    color:var(--muted);
+    font-style:italic;
+  }
+  .clear-filter{
+    font-size:11px;
+    color:var(--rust);
+    text-decoration:underline;
+    cursor:pointer;
+    margin-bottom:14px;
+    display:inline-block;
+  }
+
+  .entry-group{margin-bottom:18px;}
+  .entry-group .date-label{
+    font-size:11px;
+    color:var(--muted);
+    border-bottom:1px solid var(--rule);
+    padding-bottom:5px;
+    margin-bottom:8px;
+  }
+  .entry-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:8px 0;
+    border-bottom:1px solid var(--rule);
+    font-size:12.5px;
+    gap:10px;
+  }
+  .entry-row .left{min-width:0;display:flex;align-items:center;gap:8px;}
+  .entry-row .thumb{
+    width:30px;height:30px;
+    object-fit:cover;
+    border:1px solid var(--rule-strong);
+    flex:none;
+    cursor:pointer;
+  }
+  .entry-row .text{min-width:0;}
+  .entry-row .cat{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-bottom:2px;
+  }
+  .entry-row .cat .dot{width:7px;height:7px;flex:none;}
+  .entry-row .note{
+    color:var(--muted);
+    font-size:11px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .entry-row .right{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex:none;
+  }
+  .entry-row .amt{font-size:13px;}
+  .entry-row .amt.income{color:var(--sage);}
+  .entry-row .amt.expense{color:var(--ink);}
+  .entry-row .del{
+    color:var(--rust);
+    cursor:pointer;
+    font-size:14px;
+    line-height:1;
+    opacity:0.55;
+  }
+  .entry-row .del:hover{opacity:1;}
+
+  .loading, .empty-state{
+    text-align:center;
+    color:var(--muted);
+    font-size:12px;
+    padding:30px 0;
+  }
+
+  .lightbox{
+    position:fixed;
+    inset:0;
+    background:rgba(27,42,41,0.85);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:30px;
+    z-index:100;
+  }
+  .lightbox.open{display:flex;}
+  .lightbox img{
+    max-width:100%;
+    max-height:100%;
+    border:3px solid var(--paper-card);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div>
+      <h1>Expense Ledger</h1>
+      <div class="sub">personal spending record</div>
+    </div>
+    <div class="total">
+      <div class="amt" id="balanceTotal">฿0</div>
+      <div class="lbl">available balance</div>
+    </div>
+  </div>
+  <div class="stat-strip">
+    <span>Income (month) <b class="income" id="monthIncome">฿0</b></span>
+    <span>Expenses (month) <b class="expense" id="monthExpense">฿0</b></span>
+  </div>
+
+  <div class="month-nav">
+    <button id="prevMonth">‹</button>
+    <div class="label" id="monthLabel">—</div>
+    <button id="nextMonth">›</button>
+  </div>
+
+  <section>
+    <div class="section-title"><span class="mark"></span>Add entry</div>
+    <div class="form-card">
+      <div class="type-toggle">
+        <button type="button" data-type="expense" class="active">Expense</button>
+        <button type="button" data-type="income">Income</button>
+      </div>
+      <form id="entryForm">
+        <div class="amount-row">
+          <span class="baht">฿</span>
+          <input type="number" id="amountInput" placeholder="0.00" step="0.01" min="0" required>
+        </div>
+        <div class="chip-row" id="chipRow"></div>
+        <div id="newCatRow" class="new-cat-row" style="display:none;">
+          <input type="text" id="newCatInput" placeholder="New category name">
+          <button type="button" id="newCatConfirm">Add</button>
+        </div>
+        <div class="field-row">
+          <input type="text" id="noteInput" placeholder="Note (optional)">
+          <input type="date" id="dateInput">
+        </div>
+        <div class="field-row">
+          <input type="text" id="vendorInput" placeholder="Vendor / place (optional)">
+        </div>
+        <div class="label-mini">Payment method</div>
+        <div class="pay-chip-row" id="payChipRow"></div>
+        <div class="photo-row">
+          <button type="button" class="photo-btn" id="photoBtn">+ Attach receipt photo</button>
+          <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none;">
+          <div class="photo-preview" id="photoPreview" style="display:none;">
+            <img id="photoPreviewImg" src="" alt="Receipt preview">
+            <span class="remove" id="photoRemove">Remove</span>
+          </div>
+        </div>
+        <button type="submit" class="add-btn" id="submitBtn">Add expense</button>
+      </form>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-title"><span class="mark"></span>Breakdown</div>
+    <div id="breakdownWrap"></div>
+  </section>
+
+  <section>
+    <div class="section-title"><span class="mark"></span>Entries</div>
+    <div id="entriesWrap"><div class="loading">Loading your ledger…</div></div>
+  </section>
+
+</div>
+
+<div class="lightbox" id="lightbox">
+  <img id="lightboxImg" src="" alt="Receipt">
+</div>
+
+<script>
+const DEFAULT_EXPENSE_CATEGORIES = ["Food & Drinks","Insurance","Petrol","Car Loan","Other Loan","Money lend to others"];
+const DEFAULT_INCOME_CATEGORIES = ["Salary","Freelance / Business","Other income"];
+const PAYMENT_METHODS = ["Cash","Card","Transfer"];
+const PALETTE = ["#B8874A","#4B7361","#A5402F","#5B6E6C","#4A6B7A","#C79A3E","#7A5B4A","#8C6B8C"];
+
+let data = { expenseCategories: [...DEFAULT_EXPENSE_CATEGORIES], incomeCategories: [...DEFAULT_INCOME_CATEGORIES], transactions: [] };
+let entryType = 'expense';
+let selectedExpenseCategory = DEFAULT_EXPENSE_CATEGORIES[0];
+let selectedIncomeCategory = DEFAULT_INCOME_CATEGORIES[0];
+let selectedPayment = PAYMENT_METHODS[0];
+let pendingImageDataUrl = null;
+let viewDate = new Date();
+let activeFilterCategory = null;
+let loaded = false;
+
+function colorFor(cat){
+  let h = 0;
+  for(let i=0;i<cat.length;i++){ h = (h*31 + cat.charCodeAt(i)) % 1000000; }
+  return PALETTE[h % PALETTE.length];
+}
+
+function fmt(n){
+  return '฿' + Number(n).toLocaleString('en-US', {minimumFractionDigits: n % 1 !== 0 ? 2 : 0, maximumFractionDigits:2});
+}
+
+function monthKey(d){ return d.slice(0,7); }
+function viewMonthKey(){
+  const y = viewDate.getFullYear();
+  const m = String(viewDate.getMonth()+1).padStart(2,'0');
+  return y + '-' + m;
+}
+function monthLabel(){
+  return viewDate.toLocaleDateString('en-GB', {month:'long', year:'numeric'});
+}
+
+async function loadData(){
+  try{
+    const res = await fetch('/api/ledger');
+    const parsed = await res.json();
+    if(parsed){
+      if(parsed.transactions){
+        data.expenseCategories = (parsed.expenseCategories && parsed.expenseCategories.length) ? parsed.expenseCategories : DEFAULT_EXPENSE_CATEGORIES;
+        data.incomeCategories = (parsed.incomeCategories && parsed.incomeCategories.length) ? parsed.incomeCategories : DEFAULT_INCOME_CATEGORIES;
+        data.transactions = parsed.transactions;
+      } else if(parsed.expenses){
+        data.expenseCategories = (parsed.categories && parsed.categories.length) ? parsed.categories : DEFAULT_EXPENSE_CATEGORIES;
+        data.incomeCategories = DEFAULT_INCOME_CATEGORIES;
+        data.transactions = parsed.expenses.map(e => ({...e, type:'expense'}));
+        await saveData();
+      }
+    }
+  }catch(e){
+    // no data yet, or API not reachable — keep defaults
+  }
+  loaded = true;
+  selectedExpenseCategory = data.expenseCategories[0];
+  selectedIncomeCategory = data.incomeCategories[0];
+  document.getElementById('dateInput').value = new Date().toISOString().slice(0,10);
+  renderPayChips();
+  renderAll();
+}
+
+async function saveData(){
+  try{
+    await fetch('/api/ledger', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(data)
+    });
+  }catch(e){
+    console.error('Could not save', e);
+  }
+}
+
+function currentCategories(){
+  return entryType === 'expense' ? data.expenseCategories : data.incomeCategories;
+}
+function currentSelected(){
+  return entryType === 'expense' ? selectedExpenseCategory : selectedIncomeCategory;
+}
+function setSelected(cat){
+  if(entryType === 'expense') selectedExpenseCategory = cat; else selectedIncomeCategory = cat;
+}
+
+function renderChips(){
+  const wrap = document.getElementById('chipRow');
+  wrap.innerHTML = '';
+  currentCategories().forEach(cat=>{
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'chip' + (cat === currentSelected() ? ' active' + (entryType==='income' ? ' income-active' : '') : '');
+    btn.textContent = cat;
+    btn.onclick = ()=>{ setSelected(cat); renderChips(); };
+    wrap.appendChild(btn);
+  });
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'chip add-chip';
+  addBtn.textContent = '+ new';
+  addBtn.onclick = ()=>{
+    const row = document.getElementById('newCatRow');
+    row.style.display = row.style.display === 'none' ? 'flex' : 'none';
+    document.getElementById('newCatInput').focus();
+  };
+  wrap.appendChild(addBtn);
+}
+
+function renderPayChips(){
+  const wrap = document.getElementById('payChipRow');
+  wrap.innerHTML = '';
+  PAYMENT_METHODS.forEach(m=>{
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pay-chip' + (m === selectedPayment ? ' active' : '');
+    btn.textContent = m;
+    btn.onclick = ()=>{ selectedPayment = m; renderPayChips(); };
+    wrap.appendChild(btn);
+  });
+}
+
+function allExpenses(){ return data.transactions.filter(t => t.type === 'expense'); }
+function allIncome(){ return data.transactions.filter(t => t.type === 'income'); }
+
+function transactionsForViewMonth(){
+  return data.transactions.filter(t => monthKey(t.date) === viewMonthKey());
+}
+
+function renderHeaderTotal(){
+  const totalIncome = allIncome().reduce((s,t)=>s+Number(t.amount),0);
+  const totalExpense = allExpenses().reduce((s,t)=>s+Number(t.amount),0);
+  const balance = totalIncome - totalExpense;
+  const balEl = document.getElementById('balanceTotal');
+  balEl.textContent = (balance < 0 ? '-' : '') + fmt(Math.abs(balance));
+  balEl.className = 'amt' + (balance < 0 ? ' negative' : '');
+
+  const monthTx = transactionsForViewMonth();
+  const mIncome = monthTx.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount),0);
+  const mExpense = monthTx.filter(t=>t.type==='expense').reduce((s,t)=>s+Number(t.amount),0);
+  document.getElementById('monthIncome').textContent = fmt(mIncome);
+  document.getElementById('monthExpense').textContent = fmt(mExpense);
+  document.getElementById('monthLabel').textContent = monthLabel();
+}
+
+function renderBreakdown(monthTx){
+  const wrap = document.getElementById('breakdownWrap');
+  wrap.innerHTML = '';
+  const monthExpenses = monthTx.filter(t => t.type === 'expense');
+  if(monthExpenses.length === 0){
+    wrap.innerHTML = '<div class="empty-note">No expenses logged this month.</div>';
+    return;
+  }
+  const totals = {};
+  monthExpenses.forEach(e=>{ totals[e.category] = (totals[e.category]||0) + Number(e.amount); });
+  const grand = Object.values(totals).reduce((a,b)=>a+b,0);
+  const sorted = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+
+  if(activeFilterCategory){
+    const clear = document.createElement('div');
+    clear.className = 'clear-filter';
+    clear.textContent = 'Clear filter: ' + activeFilterCategory;
+    clear.onclick = ()=>{ activeFilterCategory = null; renderAll(); };
+    wrap.appendChild(clear);
+  }
+
+  sorted.forEach(([cat, amt])=>{
+    const pct = grand > 0 ? Math.round((amt/grand)*100) : 0;
+    const row = document.createElement('div');
+    row.className = 'bar-row' + (activeFilterCategory === cat ? ' filtered' : '');
+    row.innerHTML = `
+      <div class="top">
+        <span class="name"><span class="dot" style="background:${colorFor(cat)}"></span>${cat}</span>
+        <span class="figs">${pct}% · ${fmt(amt)}</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${colorFor(cat)}"></div></div>
+    `;
+    row.onclick = ()=>{ activeFilterCategory = (activeFilterCategory === cat) ? null : cat; renderAll(); };
+    wrap.appendChild(row);
+  });
+}
+
+function metaLine(t){
+  const parts = [];
+  if(t.note) parts.push(t.note);
+  if(t.vendor) parts.push(t.vendor);
+  if(t.paymentMethod) parts.push(t.paymentMethod);
+  return parts.join(' · ');
+}
+
+function renderEntries(monthTx){
+  const wrap = document.getElementById('entriesWrap');
+  wrap.innerHTML = '';
+  let list = monthTx;
+  if(activeFilterCategory){
+    list = list.filter(t => t.category === activeFilterCategory);
+  }
+  if(list.length === 0){
+    wrap.innerHTML = '<div class="empty-state">No entries to show.</div>';
+    return;
+  }
+  const byDate = {};
+  list.forEach(t=>{ (byDate[t.date] = byDate[t.date] || []).push(t); });
+  const dates = Object.keys(byDate).sort((a,b)=> b.localeCompare(a));
+
+  dates.forEach(date=>{
+    const group = document.createElement('div');
+    group.className = 'entry-group';
+    const label = document.createElement('div');
+    label.className = 'date-label';
+    label.textContent = new Date(date + 'T00:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'short'});
+    group.appendChild(label);
+
+    byDate[date].forEach(t=>{
+      const row = document.createElement('div');
+      row.className = 'entry-row';
+      const sign = t.type === 'income' ? '+' : '-';
+      const meta = metaLine(t);
+      row.innerHTML = `
+        <div class="left">
+          ${t.imageUrl ? `<img class="thumb" src="${t.imageUrl}" data-full="${t.imageUrl}">` : ''}
+          <div class="text">
+            <div class="cat"><span class="dot" style="background:${colorFor(t.category)}"></span>${t.category}</div>
+            ${meta ? `<div class="note">${escapeHtml(meta)}</div>` : ''}
+          </div>
+        </div>
+        <div class="right">
+          <span class="amt ${t.type}">${sign}${fmt(t.amount)}</span>
+          <span class="del" data-id="${t.id}">×</span>
+        </div>
+      `;
+      row.querySelector('.del').onclick = ()=> deleteTransaction(t.id);
+      const thumb = row.querySelector('.thumb');
+      if(thumb){
+        thumb.onclick = ()=> openLightbox(t.imageUrl);
+      }
+      group.appendChild(row);
+    });
+    wrap.appendChild(group);
+  });
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function openLightbox(url){
+  document.getElementById('lightboxImg').src = url;
+  document.getElementById('lightbox').classList.add('open');
+}
+document.getElementById('lightbox').addEventListener('click', ()=>{
+  document.getElementById('lightbox').classList.remove('open');
+});
+
+function renderAll(){
+  if(!loaded) return;
+  const monthTx = transactionsForViewMonth();
+  renderHeaderTotal();
+  renderBreakdown(monthTx);
+  renderEntries(monthTx);
+  renderChips();
+}
+
+async function deleteTransaction(id){
+  data.transactions = data.transactions.filter(t => t.id !== id);
+  await saveData();
+  renderAll();
+}
+
+document.querySelectorAll('.type-toggle button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    entryType = btn.dataset.type;
+    document.querySelectorAll('.type-toggle button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.textContent = entryType === 'expense' ? 'Add expense' : 'Add income';
+    submitBtn.className = 'add-btn' + (entryType === 'income' ? ' income-btn' : '');
+    renderChips();
+  });
+});
+
+// ---- Photo handling ----
+function compressImage(file, maxWidth, quality){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        let w = img.width, h = img.height;
+        if(w > maxWidth){
+          h = Math.round(h * maxWidth / w);
+          w = maxWidth;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+document.getElementById('photoBtn').addEventListener('click', ()=>{
+  document.getElementById('photoInput').click();
+});
+document.getElementById('photoInput').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  pendingImageDataUrl = await compressImage(file, 1200, 0.8);
+  document.getElementById('photoPreviewImg').src = pendingImageDataUrl;
+  document.getElementById('photoPreview').style.display = 'flex';
+  document.getElementById('photoBtn').style.display = 'none';
+});
+document.getElementById('photoRemove').addEventListener('click', ()=>{
+  pendingImageDataUrl = null;
+  document.getElementById('photoInput').value = '';
+  document.getElementById('photoPreview').style.display = 'none';
+  document.getElementById('photoBtn').style.display = 'inline-flex';
+});
+
+async function uploadPendingImage(){
+  if(!pendingImageDataUrl) return null;
+  const base64 = pendingImageDataUrl.split(',')[1];
+  const res = await fetch('/api/upload', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      filename: 'receipt-' + Date.now() + '.jpg',
+      dataBase64: base64,
+      contentType: 'image/jpeg'
+    })
+  });
+  if(!res.ok) throw new Error('Upload failed');
+  const json = await res.json();
+  return json.url;
+}
+
+document.getElementById('entryForm').addEventListener('submit', async (ev)=>{
+  ev.preventDefault();
+  const amount = parseFloat(document.getElementById('amountInput').value);
+  const note = document.getElementById('noteInput').value.trim();
+  const vendor = document.getElementById('vendorInput').value.trim();
+  const date = document.getElementById('dateInput').value || new Date().toISOString().slice(0,10);
+  if(!amount || amount <= 0) return;
+
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.disabled = true;
+  const originalLabel = submitBtn.textContent;
+  submitBtn.textContent = pendingImageDataUrl ? 'Uploading photo…' : 'Saving…';
+
+  let imageUrl = null;
+  try{
+    imageUrl = await uploadPendingImage();
+  }catch(err){
+    console.error(err);
+    alert('Could not upload the photo — entry will be saved without it.');
+  }
+
+  data.transactions.push({
+    id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()),
+    type: entryType,
+    amount, category: currentSelected(), note, vendor,
+    paymentMethod: selectedPayment,
+    imageUrl, date
+  });
+  await saveData();
+
+  document.getElementById('amountInput').value = '';
+  document.getElementById('noteInput').value = '';
+  document.getElementById('vendorInput').value = '';
+  pendingImageDataUrl = null;
+  document.getElementById('photoInput').value = '';
+  document.getElementById('photoPreview').style.display = 'none';
+  document.getElementById('photoBtn').style.display = 'inline-flex';
+  submitBtn.disabled = false;
+  submitBtn.textContent = originalLabel;
+
+  viewDate = new Date(date + 'T00:00:00');
+  renderAll();
+});
+
+document.getElementById('newCatConfirm').addEventListener('click', async ()=>{
+  const input = document.getElementById('newCatInput');
+  const name = input.value.trim();
+  if(name){
+    const list = currentCategories();
+    if(!list.includes(name)){
+      list.push(name);
+      setSelected(name);
+      await saveData();
+    }
+  }
+  input.value = '';
+  document.getElementById('newCatRow').style.display = 'none';
+  renderChips();
+});
+
+document.getElementById('prevMonth').addEventListener('click', ()=>{
+  viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()-1, 1);
+  activeFilterCategory = null;
+  renderAll();
+});
+document.getElementById('nextMonth').addEventListener('click', ()=>{
+  viewDate = new Date(viewDate.getFullYear(), viewDate.getMonth()+1, 1);
+  activeFilterCategory = null;
+  renderAll();
+});
+
+loadData();
+</script>
+</body>
+</html>
